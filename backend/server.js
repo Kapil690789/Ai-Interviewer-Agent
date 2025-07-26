@@ -38,6 +38,9 @@ const authMiddleware = (req, res, next) => {
       res.status(401).json({ msg: 'Token is not valid' });
   }
 };
+app.get('/', (req, res) => {
+  res.send('AI Interviewer Backend is running successfully!');
+});
 
 // const Interview = mongoose.model('Interview', interviewSchema);
 
