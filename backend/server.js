@@ -11,28 +11,29 @@ const User = require('./models/User');
 const Interview = require('./models/Interview');
 
 const app = express();
+// THIS IS THE FIX: We are defining the PORT variable
+const PORT = process.env.PORT || 5001; 
 
-// --- THIS IS THE CRITICAL FIX for CORS ---
-// We are explicitly telling the server to trust your frontend's URL.
+// --- CORS Configuration ---
 const allowedOrigins = [process.env.CLIENT_URL];
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
     }
-    return callback(null, true);
   },
 };
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// --- Database Connection ---
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('✅ Successfully connected to MongoDB.'))
     .catch(err => console.error('❌ Database connection error:', err));
 
+// --- Authentication Middleware ---
 const authMiddleware = (req, res, next) => {
   const token = req.header('x-auth-token');
   if (!token) return res.status(401).json({ msg: 'No token, authorization denied' });
@@ -47,12 +48,13 @@ const authMiddleware = (req, res, next) => {
 
 // --- API Routes ---
 
-// Test Route to confirm the server is running
+// Test Route
 app.get('/', (req, res) => {
-    res.send('AI Interviewer Backend is live and connected!');
+    res.send('AI Interviewer Backend is live on Render!');
 });
 
-// Auth Routes
+// --- All your other API routes go here ---
+// (GET /api/auth/me, POST /api/auth/signup, etc.)
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('-password');
@@ -62,7 +64,6 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
         res.status(500).send('Server Error');
     }
 });
-
 app.post('/api/auth/signup', async (req, res) => {
     const { name, email, password } = req.body;
     try {
@@ -88,7 +89,6 @@ app.post('/api/auth/signup', async (req, res) => {
       res.status(500).send('Server error');
     }
 });
-
 app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     try {
@@ -113,12 +113,10 @@ app.post('/api/auth/login', async (req, res) => {
       res.status(500).send('Server error');
     }
 });
-
 app.post('/api/auth/guest', async (req, res) => {
     const guestEmail = 'guest@example.com';
     const guestPassword = 'GuestPassword123!';
     const guestName = 'Guest User';
-
     try {
         let user = await User.findOne({ email: guestEmail });
         if (!user) {
@@ -141,8 +139,6 @@ app.post('/api/auth/guest', async (req, res) => {
         res.status(500).send('Server error');
     }
 });
-
-// Interview Routes
 app.get('/api/interviews/history', authMiddleware, async (req, res) => {
     try {
         const interviews = await Interview.find({ userId: req.user.id }).sort({ createdAt: -1 });
@@ -152,7 +148,6 @@ app.get('/api/interviews/history', authMiddleware, async (req, res) => {
         res.status(500).send('Server Error');
     }
 });
-
 app.post('/api/interviews', authMiddleware, async (req, res) => {
     try {
         const { role, techStack, messages } = req.body;
@@ -163,14 +158,12 @@ app.post('/api/interviews', authMiddleware, async (req, res) => {
         res.status(500).json({ error: 'Failed to save interview' });
     }
 });
-
 app.put('/api/interviews/:id', authMiddleware, async (req, res) => {
     try {
         const { messages, feedback } = req.body;
         const updateData = {};
         if (messages) updateData.messages = messages;
         if (feedback) updateData.feedback = feedback;
-
         const updatedInterview = await Interview.findByIdAndUpdate(
             req.params.id,
             { $set: updateData },
@@ -181,8 +174,6 @@ app.put('/api/interviews/:id', authMiddleware, async (req, res) => {
         res.status(500).json({ error: 'Failed to update interview' });
     }
 });
-
-// Gemini Route
 app.post('/api/gemini/generate', authMiddleware, async (req, res) => {
     const { prompt } = req.body;
     if (!prompt) {
@@ -210,6 +201,8 @@ app.post('/api/gemini/generate', authMiddleware, async (req, res) => {
     }
 });
 
+
+// --- Start Server ---
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
+    console.log(`🚀 Server is running on port ${PORT}`);
 });
