@@ -17,6 +17,7 @@ const Interview = require('./models/Interview');
 
 app.use(cors({ origin: process.env.CLIENT_URL })); // Allow requests from our React app
 app.use(express.json()); // Parse JSON bodies
+app.use(cors()); // Vercel handles the CLIENT_URL automatically
 
 // --- 3. Database Connection ---
 mongoose.connect(process.env.MONGO_URI)
@@ -179,6 +180,8 @@ app.post('/api/auth/login', async (req, res) => {
   });
   
 // --- 6. Start Server ---
-app.listen(PORT, () => {
-    console.log(`🚀 Server is running on http://localhost:${PORT}`);
-});
+// app.listen(PORT, () => {
+//     console.log(`🚀 Server is running on http://localhost:${PORT}`);
+// });
+// --- 6. Export the app for Vercel ---
+module.exports = app;
